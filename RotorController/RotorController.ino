@@ -35,6 +35,11 @@
 #define RELAY_CCW     25    // Relay 3: Counter-Clockwise Rotation
 #define RELAY_SPARE   26    // Relay 4: Unused (available for expansion)
 
+// WiFi reset button (GPIO 0 = built-in BOOT button on most ESP32 dev modules)
+// Hold for WIFI_RESET_HOLD_MS to wipe saved credentials and reboot into config portal
+#define WIFI_RESET_BUTTON     0
+#define WIFI_RESET_HOLD_MS    3000
+
 // ADC for position feedback
 #define ADC_POSITION  34    // ADC1_CH6 (input only, no pullup - ideal for ADC)
 
@@ -152,6 +157,10 @@ WebServer server(WEB_SERVER_PORT);
 // Status tracking
 String lastAction = "System startup";
 unsigned long lastActionTime = 0;
+
+// WiFi reset button
+unsigned long wifiResetButtonPressTime = 0;
+bool wifiResetButtonActive = false;
 
 // ============================================================================
 // RELAY CONTROL FUNCTIONS (ACTIVE LOW LOGIC)
@@ -1016,6 +1025,32 @@ String getWebPage() {
 }
 
 // ============================================================================
+// WIFI RESET BUTTON
+// ============================================================================
+
+void checkWiFiResetButton() {
+  bool pressed = (digitalRead(WIFI_RESET_BUTTON) == LOW);
+
+  if (pressed && !wifiResetButtonActive) {
+    wifiResetButtonActive = true;
+    wifiResetButtonPressTime = millis();
+    Serial.println("[WIFI] Reset button held - release within 3s to cancel");
+  }
+
+  if (!pressed && wifiResetButtonActive) {
+    wifiResetButtonActive = false;  // Released before threshold
+  }
+
+  if (wifiResetButtonActive && (millis() - wifiResetButtonPressTime >= WIFI_RESET_HOLD_MS)) {
+    Serial.println("[WIFI] Resetting WiFi credentials and restarting...");
+    WiFiManager wm;
+    wm.resetSettings();
+    delay(500);
+    ESP.restart();
+  }
+}
+
+// ============================================================================
 // WIFI SETUP (WiFiManager)
 // ============================================================================
 
@@ -1111,6 +1146,9 @@ void setup() {
   // CRITICAL: Initialize relays OFF before anything else
   initializeRelays();
 
+  // WiFi reset button
+  pinMode(WIFI_RESET_BUTTON, INPUT_PULLUP);
+
   // Load calibration from EEPROM
   loadCalibration();
 
@@ -1146,6 +1184,9 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
+
+  // Check WiFi reset button
+  checkWiFiResetButton();
 
   // Handle OTA updates
   ArduinoOTA.handle();

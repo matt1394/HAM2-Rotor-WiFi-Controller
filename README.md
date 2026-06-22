@@ -21,6 +21,7 @@ WiFi remote control system for a CDE HAM-2 antenna rotor with safety-first desig
   - GPIO 25: Counter-Clockwise Rotation (Relay 3)
   - GPIO 26: Spare (Relay 4)
   - GPIO 34: ADC Position Input
+  - GPIO 0: WiFi Reset Button (built-in BOOT button)
 - **Position Feedback**: 470kΩ/100kΩ voltage divider from rotor meter (0-12.6V → 0-2.2V)
 
 ## Safety Features
@@ -53,6 +54,12 @@ Built-in libraries (no installation needed):
 2. Connect to "Rotor-Controller-Setup" WiFi AP
 3. Configure your home WiFi in the captive portal
 4. Access web interface at `http://rotor-control.local`
+
+### Resetting WiFi Credentials
+
+Hold the **BOOT button** (GPIO 0) for **3 seconds**. The device will wipe saved credentials and reboot into the setup AP (`Rotor-Controller-Setup`), where you can enter new WiFi details via the captive portal. Releasing the button before 3 seconds cancels the reset.
+
+If you prefer a dedicated external button, wire a normally-open momentary switch between any free GPIO and GND, then change `#define WIFI_RESET_BUTTON` in the sketch.
 
 ## Calibration
 
